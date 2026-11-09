@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="有利区間チェック">
+<meta name="theme-color" content="#0b0f16">
+<title>沖ドキ 有利区間チェック</title>
+<style>
+  :root{
+    --bg:#0b0f16; --panel:#151b26; --panel2:#1c2432; --line:#2a3444;
+    --fg:#e8edf5; --muted:#8b98ac; --accent:#ffcc33; --accent2:#4da3ff;
+    --big:#ff6b6b; --reg:#4da3ff; --plus:#3ddc84; --warn:#ffa53d;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-t: env(safe-area-inset-top, 0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    font-size:16px;line-height:1.5;overscroll-behavior-y:none}
+  body{padding-bottom:calc(150px + var(--safe-b))}
+  button{font-family:inherit}
+
+  header{position:sticky;top:0;z-index:20;background:rgba(11,15,22,.94);
+    backdrop-filter:saturate(160%) blur(12px);-webkit-backdrop-filter:saturate(160%) blur(12px);
+    border-bottom:1px solid var(--line);padding:calc(8px + var(--safe-t)) 12px 8px}
+  .htop{display:flex;align-items:center;gap:8px}
+  header h1{margin:0;font-size:15px;font-weight:700;flex:1}
+  .mseg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px}
+  .mseg button{background:none;border:0;color:var(--muted);font-size:12px;font-weight:700;
+    padding:5px 11px;border-radius:999px;cursor:pointer}
+  .mseg button.on{background:var(--accent);color:#241c00}
+
+  main{padding:10px 12px 8px;max-width:720px;margin:0 auto}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:12px;margin-bottom:10px}
+  .card h2{margin:0 0 8px;font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.04em}
+
+  /* 上部の判定 */
+  .hero{text-align:center;padding:14px 12px 12px}
+  .hero .k{font-size:12px;color:var(--muted)}
+  .hero .v{font-size:62px;font-weight:800;font-variant-numeric:tabular-nums;
+    letter-spacing:-.03em;line-height:1.05;color:var(--accent)}
+  .hero .v .u{font-size:20px;font-weight:700;margin-left:2px}
+  .hero .v.over{color:var(--plus)}
+  .gauge{position:relative;height:10px;background:var(--panel2);border-radius:99px;margin:12px 0 6px;overflow:hidden}
+  .gauge i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+  .gauge.over i{background:var(--plus)}
+  .gauge s{position:absolute;top:-3px;bottom:-3px;left:0;width:2px;background:var(--muted);opacity:.8}
+  .hero .sub{font-size:12px;color:var(--muted)}
+
+  /* 入力 */
+  .inp{display:flex;gap:8px;align-items:center}
+  .inp input{flex:1;background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+    border-radius:12px;padding:14px 12px;font-size:26px;font-weight:700;text-align:center;
+    font-variant-numeric:tabular-nums;min-width:0;-webkit-appearance:none;appearance:none}
+  .inp input:focus{outline:none;border-color:var(--accent2)}
+  .inp .g{font-size:13px;color:var(--muted)}
+  .brow{display:flex;gap:8px;margin-top:8px}
+  .brow button{flex:1;border:1px solid var(--line);border-radius:12px;padding:16px 4px;
+    font-size:17px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit}
+  .brow button.big{background:rgba(255,107,107,.18);border-color:var(--big);color:var(--big)}
+  .brow button.reg{background:rgba(77,163,255,.18);border-color:var(--reg);color:var(--reg)}
+  .brow button:active{filter:brightness(1.35)}
+  .brow2{display:flex;gap:8px;margin-top:6px}
+  .brow2 button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+    border-radius:10px;padding:9px 4px;font-size:13px;cursor:pointer}
+  .brow2 button:active{color:var(--fg)}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+  .pad button{background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    border-radius:10px;padding:13px 0;font-size:19px;font-weight:700;cursor:pointer;
+    font-variant-numeric:tabular-nums}
+  .pad button:active{background:var(--panel)}
+
+  /* 一覧 */
+  .lhead{display:grid;grid-template-columns:44px 1fr auto;gap:6px;font-size:11px;
+    color:var(--muted);padding:0 2px 4px}
+  .row{display:grid;grid-template-columns:44px 1fr auto;gap:6px;align-items:center;
+    background:var(--panel2);border:1px solid var(--line);border-radius:11px;
+    padding:9px 10px;margin-bottom:6px}
+  .row .no{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .row .g{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .row .g .bd{font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;margin-left:6px;
+    vertical-align:2px}
+  .row .g .bd.big{background:rgba(255,107,107,.18);color:var(--big);border:1px solid var(--big)}
+  .row .g .bd.reg{background:rgba(77,163,255,.18);color:var(--reg);border:1px solid var(--reg)}
+  .row .g .bd.sp{background:rgba(255,165,61,.18);color:var(--warn);border:1px solid var(--warn)}
+  .row .cu{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent);
+    text-align:right;white-space:nowrap}
+  .row .cu .ar{color:var(--muted);font-weight:400;margin:0 3px}
+  .row .cu .one{font-size:15px}
+  .row .det{grid-column:1/-1;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);
+    font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .row .det span{color:var(--fg)}
+  .row.sel{border-color:var(--accent2)}
+  .rst{display:flex;align-items:center;gap:8px;margin:-2px 0 6px;padding:5px 8px;
+    background:rgba(255,204,51,.10);border:1px dashed var(--accent);border-radius:9px;
+    font-size:12px;color:var(--accent);touch-action:none;cursor:grab}
+  .rst .h{flex:1;text-align:center;font-weight:700}
+  .rst .x{background:none;border:0;color:var(--accent);font-size:16px;padding:2px 6px;cursor:pointer}
+  .rst .gr{font-size:14px;color:var(--accent);opacity:.85}
+  .rst.drag{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+  .acts{display:flex;gap:6px;margin-top:8px}
+  .acts button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    border-radius:10px;padding:11px 4px;font-size:13px;cursor:pointer}
+  .acts button:active{background:var(--panel)}
+  .empty{font-size:12px;color:var(--muted);text-align:center;padding:14px 4px}
+
+  /* 下部バー */
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(11,15,22,.96);
+    backdrop-filter:saturate(160%) blur(12px);-webkit-backdrop-filter:saturate(160%) blur(12px);
+    border-top:1px solid var(--line);padding:8px 10px calc(8px + var(--safe-b))}
+  .bar .in{max-width:720px;margin:0 auto;display:flex;gap:6px}
+  .bar button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    border-radius:10px;padding:10px 2px;font-size:12px;font-weight:700;cursor:pointer;line-height:1.25}
+  .bar button.on{background:var(--accent);color:#241c00;border-color:var(--accent)}
+  .bar button small{display:block;font-size:9px;font-weight:400;opacity:.75}
+  .bar button.on small{opacity:.85}
+
+  /* シート・ダイアログ */
+  dialog{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:14px;
+    padding:0;max-width:420px;width:calc(100% - 24px)}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .dh{padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;font-weight:700}
+  .db{padding:12px 14px;max-height:60vh;overflow:auto}
+  .df{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px}
+  .df button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    border-radius:10px;padding:11px;font-size:14px;cursor:pointer}
+  .df button.pri{background:var(--accent);color:#241c00;border-color:var(--accent);font-weight:700}
+  .sw{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:11px 2px;border-bottom:1px solid var(--line);font-size:14px}
+  .sw:last-child{border-bottom:0}
+  .sw small{display:block;color:var(--muted);font-size:11px;font-weight:400}
+  .tg{width:50px;height:29px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);
+    position:relative;flex:0 0 auto;cursor:pointer;transition:background .15s}
+  .tg i{position:absolute;top:2px;left:2px;width:23px;height:23px;border-radius:50%;
+    background:var(--muted);transition:transform .15s,background .15s}
+  .tg.on{background:rgba(255,204,51,.25);border-color:var(--accent)}
+  .tg.on i{transform:translateX(21px);background:var(--accent)}
+  .sv{display:flex;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line)}
+  .sv .n{flex:1;font-size:13px}
+  .sv .n b{display:block;font-size:14px}
+  .sv .n small{color:var(--muted);font-size:11px}
+  .sv button{background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    border-radius:9px;padding:8px 12px;font-size:12px;cursor:pointer}
+  .inl{display:flex;gap:8px;margin-bottom:10px}
+  .inl input{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    border-radius:10px;padding:11px;font-size:15px;font-family:inherit;min-width:0}
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--safe-b));
+    background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:9px 16px;
+    border-radius:99px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+  #toast.on{opacity:1}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="htop">
+    <h1>沖ドキ 有利区間チェック</h1>
+    <div class="mseg" id="segMachine">
+      <button data-m="gold" class="on">GOLD</button>
+      <button data-m="black">BLACK</button>
+    </div>
+    <button id="btnSet" style="background:none;border:1px solid var(--line);color:var(--muted);
+      border-radius:9px;padding:6px 9px;font-size:14px;cursor:pointer">⚙</button>
+  </div>
+</header>
+
+<main>
+
+  <div class="card hero">
+    <div class="k">有利区間の累計ゲーム数</div>
+    <div class="v" id="curG">0<span class="u">G</span></div>
+    <div class="gauge" id="gauge"><i id="gaugeBar"></i><s style="left:100%"></s></div>
+    <div class="sub" id="gaugeSub">2000Gまで あと 2000G</div>
+  </div>
+
+  <div class="card">
+    <h2>ボーナスを登録</h2>
+    <div class="inp">
+      <input id="inpG" type="number" inputmode="numeric" placeholder="0" min="0">
+      <div class="g">G</div>
+    </div>
+    <div class="brow">
+      <button class="big" data-b="big">BIG</button>
+      <button class="reg" data-b="reg">REG</button>
+    </div>
+    <div class="brow2">
+      <button data-b="now">現在Gを登録</button>
+      <button data-b="last">前日最終G</button>
+    </div>
+    <div class="pad" id="pad"></div>
+    <div class="hint" id="insHint"></div>
+  </div>
+
+  <div class="card">
+    <h2>履歴 <span id="listCount" style="color:var(--muted);font-weight:400"></span></h2>
+    <div class="lhead"><div>回数</div><div>ゲーム数／種別</div><div style="text-align:right" id="lheadCu">累計</div></div>
+    <div id="list"></div>
+    <div class="acts">
+      <button id="btnDelOne">1つ削除</button>
+      <button id="btnDelAll">全て削除</button>
+      <button id="btnOrder">並び替え</button>
+    </div>
+  </div>
+
+</main>
+
+<nav class="bar">
+  <div class="in">
+    <button id="btnMode">合算<small>タップで逆算</small></button>
+    <button id="btnOrder2">新しい順<small>タップで反転</small></button>
+    <button id="btnDetail">詳細表示<small>オフ</small></button>
+    <button id="btnSave">保存・履歴<small>データ管理</small></button>
+  </div>
+</nav>
+
+<dialog id="dlgSet">
+  <div class="dh">設定</div>
+  <div class="db">
+    <div class="sw"><div>登録したら連続入力<small>登録後にゲーム数欄へ戻る</small></div><div class="tg" data-s="autoFocus"><i></i></div></div>
+    <div class="sw"><div>数字キーを表示<small>画面のテンキーで入力する</small></div><div class="tg" data-s="keypad"><i></i></div></div>
+    <div class="sw"><div>登録方向：引いた順に登録<small>オフで「逆順に登録」（過去の履歴を足すとき）</small></div><div class="tg" data-s="append"><i></i></div></div>
+    <div class="hint">詳細表示と合算／逆算は、画面下のボタンで切り替えます。</div>
+  </div>
+  <div class="df"><button class="pri" id="setClose">閉じる</button></div>
+</dialog>
+
+<dialog id="dlgSave">
+  <div class="dh">データ保存・履歴</div>
+  <div class="db">
+    <div class="inl">
+      <input id="saveName" type="text" placeholder="名前（例：11/9 据え置き）">
+      <button id="btnSaveNow" style="background:var(--accent);color:#241c00;border:1px solid var(--accent);
+        border-radius:10px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer">保存</button>
+    </div>
+    <div id="saveList"></div>
+    <div class="hint">保存したデータは端末に残ります。読み込むと今の内容は置き換わります。</div>
+  </div>
+  <div class="df">
+    <button id="btnNew">新規作成（空にする）</button>
+    <button class="pri" id="saveClose">閉じる</button>
+  </div>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ===================== 機種と定数 ===================== */
+// ボーナス消化ゲーム数（元ツールと同じ値）
+const MACH = {
+  gold:  { label:'GOLD',  big:69, reg:29 },
+  black: { label:'BLACK', big:59, reg:24 },
+};
+const RANGE = 2000;                       // 有利区間の目安（2000G狙い）
+const KEY = 'okidoki_v1';
+
+/* ===================== 状態 ===================== */
+const DEF_SET = { autoFocus:true, keypad:false, detail:false, append:true };
+let S = {
+  machine: 'gold',
+  data:   { gold:[], black:[] },     // 時系列（古い順）に保持
+  resets: { gold:[], black:[] },     // リセット線を入れる行のid
+  set: Object.assign({}, DEF_SET),
+  mode: 'awase',                     // awase=合算 / gyaku=逆算
+  order: 'desc',                     // desc=新しい順 / asc=古い順
+  saves: {},
+  seq: 1,
+};
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (!o || typeof o !== 'object') return;
+    if (o.machine && MACH[o.machine]) S.machine = o.machine;
+    if (o.data) { S.data.gold = Array.isArray(o.data.gold) ? o.data.gold : [];
+                  S.data.black = Array.isArray(o.data.black) ? o.data.black : []; }
+    if (o.resets) { S.resets.gold = Array.isArray(o.resets.gold) ? o.resets.gold : [];
+                    S.resets.black = Array.isArray(o.resets.black) ? o.resets.black : []; }
+    if (o.set) S.set = Object.assign({}, DEF_SET, o.set);
+    if (o.mode === 'gyaku' || o.mode === 'awase') S.mode = o.mode;
+    if (o.order === 'asc' || o.order === 'desc') S.order = o.order;
+    if (o.saves && typeof o.saves === 'object') S.saves = o.saves;
+    if (typeof o.seq === 'number') S.seq = o.seq;
+  }catch(e){}
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const mach = () => MACH[S.machine];
+const bonusG = b => b === 'big' ? mach().big : b === 'reg' ? mach().reg : 0;
+const list = () => S.data[S.machine];
+const resetSet = () => new Set(S.resets[S.machine]);
+
+/* ===================== 計算（元ツールと同じ式） ===================== */
+// 合算: 累計 = 前の累計 + その回のG + ボーナス消化G
+function calcAwase(){
+  const rs = resetSet(); let total = 0; const out = [];
+  for (const e of list()){
+    const isR = rs.has(e.id);
+    if (isR) total = 0;
+    const old = total, t2 = total + Number(e.g || 0), t1 = t2 + bonusG(e.b);
+    total = t1;
+    out.push({ e, isR, old, t2, t1, bg: bonusG(e.b) });
+  }
+  return out;
+}
+// 逆算: 0Gから後ろ向きに引いていく（現在地点を基準に、何G前に引いたかを負の数で表す）
+function calcGyaku(){
+  const rs = resetSet(); let total = 0;
+  const out = [];
+  for (const e of list()){
+    const isR = rs.has(e.id);
+    if (isR) total = 0;
+    const old = total, t2 = total, t1 = total - Number(e.g || 0);
+    total = t1 - bonusG(e.b);
+    out.push({ e, isR, old, t1, t2, after: total, bg: bonusG(e.b) });
+  }
+  return out;
+}
+function calc(){ return S.mode === 'gyaku' ? calcGyaku() : calcAwase(); }
+
+// 現在の有利区間の累計（上部の大きな数字。逆算モードでも常に合算の値を出す）
+function currentTotal(){
+  if (resetSet().has(TAIL)) return 0;   // 一番下にリセット線＝ここから有利区間が始まる
+  const rows = calcAwase();
+  if (!rows.length) return 0;
+  const last = rows[rows.length - 1];
+  const isSp = last.e.b === 'now' || last.e.b === 'last';
+  return isSp ? last.t2 : last.t1;
+}
+
+/* ===================== 表示 ===================== */
+const nf = n => Number(n).toLocaleString('ja-JP');
+
+function rowHTML(r, no){
+  const e = r.e;
+  const isSp = e.b === 'now' || e.b === 'last';
+  const badge = e.b === 'big' ? '<span class="bd big">BIG</span>'
+              : e.b === 'reg' ? '<span class="bd reg">REG</span>'
+              : '<span class="bd sp">' + (e.b === 'now' ? '現在' : '最終') + '</span>';
+  let cu;
+  if (S.mode === 'gyaku'){
+    cu = isSp ? '<span class="one">' + nf(r.t2) + 'G</span>'
+              : nf(r.t1) + 'G<span class="ar">→</span>' + nf(r.t2) + 'G';
+  }else{
+    cu = isSp ? '<span class="one">' + nf(r.t2) + 'G</span>'
+              : nf(r.t2) + 'G<span class="ar">→</span>' + nf(r.t1) + 'G';
+  }
+  let det = '';
+  if (S.set.detail){
+    if (S.mode === 'gyaku'){
+      det = '<div class="det">通常時開始〜当選 <span>' + nf(r.t2) + '</span>G 〜 <span>' + nf(r.t1 + 1) +
+            '</span>G' + (isSp ? '' : '／ボーナス開始〜終了 <span>' + nf(r.t1) + '</span>G 〜 <span>' +
+            nf(r.after + 1) + '</span>G') + '</div>';
+    }else{
+      det = '<div class="det">通常時開始〜当選 <span>' + nf(r.old + 1) + '</span>G 〜 <span>' + nf(r.t2) +
+            '</span>G' + (isSp ? '' : '／ボーナス開始〜終了 <span>' + nf(r.t2 + 1) + '</span>G 〜 <span>' +
+            nf(r.t1) + '</span>G') + '</div>';
+    }
+  }
+  return '<div class="row' + (r.isR ? ' sel' : '') + '" data-id="' + e.id + '">' +
+    '<div class="no">' + no + '回目</div>' +
+    '<div class="g">' + nf(e.g) + 'G' + badge + '</div>' +
+    '<div class="cu">' + cu + '</div>' + det + '</div>';
+}
+function resetHTML(id){
+  return '<div class="rst" data-id="' + id + '"><span class="gr">⠿</span>' +
+    '<span class="h">ここで有利区間リセット</span>' +
+    '<button class="x" data-x="' + id + '">×</button></div>';
+}
+
+function render(){
+  const rows = calc();
+  const n = rows.length;
+
+  // 上部
+  const cur = currentTotal();
+  const over = cur >= RANGE;
+  $('curG').innerHTML = nf(cur) + '<span class="u">G</span>';
+  $('curG').className = 'v' + (over ? ' over' : '');
+  $('gauge').className = 'gauge' + (over ? ' over' : '');
+  $('gaugeBar').style.width = Math.min(100, cur / RANGE * 100) + '%';
+  $('gaugeSub').innerHTML = over
+    ? '2000Gを超えました（<b>' + nf(cur - RANGE) + 'G超過</b>）'
+    : '2000Gまで あと <b>' + nf(RANGE - cur) + 'G</b>';
+  $('gaugeSub').style.color = over ? 'var(--plus)' : '';
+
+  // 一覧（表示順）
+  const rs = resetSet();
+  let arr = rows.map((r, i) => ({ r, no: i + 1 }));
+  if (S.order === 'desc') arr = arr.slice().reverse();
+  let html = '';
+  if (!arr.length){
+    html = '<div class="empty">まだ履歴がありません。上のボーナスボタンで登録してください。</div>';
+  }else{
+    for (const item of arr){
+      // その行の上にリセット線がある場合は先に描く
+      if (rs.has(item.r.e.id)) html += resetHTML(item.r.e.id);
+      html += rowHTML(item.r, item.no);
+    }
+    // 一番下（最新の次の位置）に線がある場合
+    if (rs.has(TAIL)) html += resetHTML(TAIL);
+  }
+  $('list').innerHTML = html;
+  $('listCount').textContent = n ? '（' + n + '件）' : '';
+  $('lheadCu').textContent = S.mode === 'gyaku' ? '逆算（現在=0）' : '累計';
+
+  // 下部ボタン
+  $('btnMode').innerHTML = (S.mode === 'gyaku' ? '逆算' : '合算') + '<small>タップで切替</small>';
+  $('btnMode').className = S.mode === 'gyaku' ? 'on' : '';
+  $('btnOrder2').innerHTML = (S.order === 'desc' ? '新しい順' : '古い順') + '<small>タップで反転</small>';
+  $('btnDetail').innerHTML = '詳細表示<small>' + (S.set.detail ? 'オン' : 'オフ') + '</small>';
+  $('btnDetail').className = S.set.detail ? 'on' : '';
+  $('insHint').textContent = S.set.append ? '入力した順に下へ追加します' : '逆順に登録中：新しい行は上に入ります';
+
+  // 数字キー
+  $('pad').style.display = S.set.keypad ? 'grid' : 'none';
+  // リセット位置ボタンの表示（機能自体は常に使える）
+  save();
+}
+
+function padHTML(){
+  let h = '';
+  for (const k of ['1','2','3','4','5','6','7','8','9','⌫','0','C']) h += '<button data-k="' + k + '">' + k + '</button>';
+  return h;
+}
+
+/* ===================== 入力 ===================== */
+function addEntry(b){
+  const g = $('inpG').value.trim();
+  if (g === '' || !(Number(g) >= 0)){
+    toast('ゲーム数を入力してください');
+    return;
+  }
+  const arr = list();
+  const e = { id: S.seq++, g: Number(g), b: b };
+  // 「現在G」は上書き（元ツールと同じ）
+  if (b === 'now'){
+    const i = arr.findIndex(x => x.b === 'now');
+    if (i >= 0){ e.id = arr[i].id; arr.splice(i, 1); }
+  }
+  // 元ツールと同じ: 末尾が「現在G」の状態で次を登録すると、その現在Gは消える
+  if (S.set.append && arr.length && arr[arr.length - 1].b === 'now') arr.pop();
+  else if (!S.set.append && arr.length && arr[arr.length - 1].b === 'now' && b === 'now') arr.pop();
+  if (!S.set.append && b !== 'now') arr.unshift(e); else arr.push(e);
+  $('inpG').value = '';
+  render();
+  $('inpG').blur();
+  toast(S.mode === 'gyaku' ? '登録しました' : (b === 'now' ? '現在Gを更新しました' : '登録しました'));
+  if (S.set.autoFocus && !S.set.keypad) $('inpG').focus();
+}
+
+function toast(msg){
+  const el = $('toast');
+  el.textContent = msg; el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 1500);
+}
+
+const TAIL = '__tail__';
+/* 行のid・リセット線のidを同じ型（数値）にそろえる */
+const idOf = v => (v === TAIL ? TAIL : Number(v));
+
+/* ===================== 操作 ===================== */
+function toggleReset(id){
+  const key = idOf(id);
+  const rs = S.resets[S.machine];
+  const i = rs.indexOf(key);
+  if (i >= 0) rs.splice(i, 1); else rs.push(key);
+  render();
+  toast(i >= 0 ? 'リセット線を消しました' : 'ここでリセットを入れました');
+}
+
+/* ドラッグでリセット線を移動（タップで入れる方式と併用） */
+let drag = null;
+function onDragStart(ev){
+  const el = ev.target.closest('.rst');
+  if (!el || ev.target.classList.contains('x')) return;
+  const id = el.dataset.id;
+  drag = { id, el, x: ev.clientX, y: ev.clientY, moved:false };
+  el.classList.add('drag');
+  el.setPointerCapture && el.setPointerCapture(ev.pointerId);
+  ev.preventDefault();
+}
+function onDragMove(ev){
+  if (!drag) return;
+  if (Math.abs(ev.clientY - drag.y) < 6 && Math.abs(ev.clientX - drag.x) < 6) return;
+  drag.moved = true;
+  // 指の位置にある行を探して、その上に差し込む
+  drag.el.style.pointerEvents = 'none';
+  const under = document.elementFromPoint(ev.clientX, ev.clientY);
+  drag.el.style.pointerEvents = '';
+  const row = under && under.closest ? under.closest('.row') : null;
+  const rst = under && under.closest ? under.closest('.rst') : null;
+  if (row) drag.target = row.dataset.id;
+  else if (rst && rst !== drag.el) drag.target = rst.dataset.id;
+  // 見た目のフィードバック
+  document.querySelectorAll('.row').forEach(r => r.classList.remove('sel'));
+  if (row) row.classList.add('sel');
+}
+function onDragEnd(){
+  if (!drag) return;
+  const d = drag; drag = null;
+  d.el.classList.remove('drag');
+  document.querySelectorAll('.row').forEach(r => r.classList.remove('sel'));
+  if (!d.moved || !d.target || d.target === d.id) { render(); return; }
+  // 位置を付け替え（idで管理しているので、配列から入れ替えるだけ）
+  const rs = S.resets[S.machine];
+  const from = idOf(d.id), to = idOf(d.target);
+  const i = rs.indexOf(from);
+  if (to === TAIL){
+    if (i >= 0) rs.splice(i, 1);
+    if (!rs.includes(TAIL)) rs.push(TAIL);
+  }else{
+    if (!rs.includes(to)) rs.push(to);
+    if (i >= 0) rs.splice(i, 1);
+  }
+  render();
+  toast('リセット位置を移動しました');
+}
+
+/* ===================== 設定 ===================== */
+function renderSettings(){
+  document.querySelectorAll('#dlgSet .tg').forEach(t => {
+    t.classList.toggle('on', !!S.set[t.dataset.s]);
+  });
+}
+
+/* ===================== 保存・履歴 ===================== */
+function renderSaves(){
+  const keys = Object.keys(S.saves).sort((a, b) => (S.saves[b].at || 0) - (S.saves[a].at || 0));
+  if (!keys.length){ $('saveList').innerHTML = '<div class="hint">保存したデータはまだありません。</div>'; return; }
+  $('saveList').innerHTML = keys.map(k => {
+    const v = S.saves[k];
+    const d = new Date(v.at || 0);
+    const when = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return '<div class="sv"><div class="n"><b>' + esc(k) + '</b><small>' + when + '・' +
+      (v.data ? v.data.length : 0) + '件・' + (MACH[v.machine] ? MACH[v.machine].label : 'GOLD') +
+      '</small></div>' +
+      '<button data-load="' + esc(k) + '">読込</button>' +
+      '<button data-del="' + esc(k) + '">削除</button></div>';
+  }).join('');
+}
+
+/* ===================== 初期化 ===================== */
+function init(){
+  load();
+  $('pad').innerHTML = padHTML();
+
+  // 機種切替
+  document.querySelectorAll('#segMachine button').forEach(b => {
+    b.classList.toggle('on', b.dataset.m === S.machine);
+    b.addEventListener('click', () => {
+      S.machine = b.dataset.m;
+      document.querySelectorAll('#segMachine button').forEach(x => x.classList.toggle('on', x === b));
+      render();
+    });
+  });
+
+  // 登録
+  document.querySelectorAll('.brow button, .brow2 button').forEach(b => {
+    b.addEventListener('click', () => addEntry(b.dataset.b));
+  });
+  // テンキー
+  $('pad').addEventListener('click', e => {
+    const k = e.target.dataset.k; if (!k) return;
+    const el = $('inpG');
+    if (k === '⌫') el.value = el.value.slice(0, -1);
+    else if (k === 'C') el.value = '';
+    else el.value = (el.value + k).replace(/^0+(?=\d)/, '');
+  });
+  // 一覧のタップ: 行 → その上にリセット線／× → 線の削除
+  $('list').addEventListener('click', e => {
+    const x = e.target.closest('[data-x]');
+    if (x){ toggleReset(x.dataset.x); return; }
+    if (e.target.closest('.rst')) return;
+    const row = e.target.closest('.row');
+    if (row) toggleReset(row.dataset.id);
+  });
+  $('list').addEventListener('pointerdown', onDragStart);
+  $('list').addEventListener('pointermove', onDragMove);
+  $('list').addEventListener('pointerup', onDragEnd);
+  $('list').addEventListener('pointercancel', onDragEnd);
+
+  // 下部バー
+  $('btnMode').addEventListener('click', () => {
+    S.mode = S.mode === 'gyaku' ? 'awase' : 'gyaku'; render();
+    toast(S.mode === 'gyaku' ? '逆算（いまのGを0Gとして計算）' : '合算（有利区間の累計）');
+  });
+  $('btnOrder2').addEventListener('click', () => { S.order = S.order === 'desc' ? 'asc' : 'desc'; render(); });
+  $('btnDetail').addEventListener('click', () => { S.set.detail = !S.set.detail; render(); });
+  $('btnOrder').addEventListener('click', () => { S.order = S.order === 'desc' ? 'asc' : 'desc'; render(); });
+
+  // 削除
+  $('btnDelOne').addEventListener('click', () => {
+    const arr = list(); if (!arr.length) return;
+    const e = S.set.append ? arr.pop() : arr.shift();
+    const i = S.resets[S.machine].indexOf(e.id); if (i >= 0) S.resets[S.machine].splice(i, 1);
+    render(); toast('1つ削除しました');
+  });
+  $('btnDelAll').addEventListener('click', () => {
+    if (!list().length) return;
+    if (!confirm('履歴をすべて削除します。よろしいですか？')) return;
+    S.data[S.machine] = []; S.resets[S.machine] = [];
+    render(); toast('全て削除しました');
+  });
+
+  // 設定
+  $('btnSet').addEventListener('click', () => { renderSettings(); $('dlgSet').showModal(); });
+  $('setClose').addEventListener('click', () => $('dlgSet').close());
+  document.querySelectorAll('#dlgSet .tg').forEach(t => {
+    t.addEventListener('click', () => {
+      S.set[t.dataset.s] = !S.set[t.dataset.s];
+      renderSettings(); render();
+    });
+  });
+
+  // 保存・履歴
+  $('btnSave').addEventListener('click', () => { renderSaves(); $('dlgSave').showModal(); });
+  $('saveClose').addEventListener('click', () => $('dlgSave').close());
+  $('btnSaveNow').addEventListener('click', () => {
+    const name = $('saveName').value.trim() ||
+      (new Date().getMonth() + 1) + '/' + new Date().getDate() + ' ' +
+      String(new Date().getHours()).padStart(2, '0') + ':' + String(new Date().getMinutes()).padStart(2, '0');
+    S.saves[name] = { data: list().slice(), resets: S.resets[S.machine].slice(),
+      machine: S.machine, at: Date.now() };
+    $('saveName').value = '';
+    renderSaves(); save(); toast('「' + name + '」に保存しました');
+  });
+  $('saveList').addEventListener('click', e => {
+    const l = e.target.closest('[data-load]'), d = e.target.closest('[data-del]');
+    if (l){
+      const k = l.dataset.load, v = S.saves[k];
+      if (!v) return;
+      if (list().length && !confirm('いまの内容を「' + k + '」で置き換えます。よろしいですか？')) return;
+      if (v.machine && MACH[v.machine]) S.machine = v.machine;
+      document.querySelectorAll('#segMachine button').forEach(x => x.classList.toggle('on', x.dataset.m === S.machine));
+      S.data[S.machine] = (v.data || []).slice();
+      S.resets[S.machine] = (v.resets || []).slice();
+      S.seq = Math.max(S.seq, ...S.data[S.machine].map(x => x.id + 1), 1);
+      render(); toast('「' + k + '」を読み込みました');
+    }
+    if (d){
+      const k = d.dataset.del;
+      if (!confirm('「' + k + '」を削除します。よろしいですか？')) return;
+      delete S.saves[k]; renderSaves(); save();
+    }
+  });
+  $('btnNew').addEventListener('click', () => {
+    if (list().length && !confirm('いまの履歴を空にします。よろしいですか？')) return;
+    S.data[S.machine] = []; S.resets[S.machine] = [];
+    $('dlgSave').close(); render(); toast('新規作成しました');
+  });
+
+  render();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
